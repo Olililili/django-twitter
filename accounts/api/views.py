@@ -9,7 +9,7 @@ from django.contrib.auth import (
     logout as django_logout,
     authenticate as django_authenticate,
 )
-
+from accounts.api.serializers import SignupSerializer, LoginSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -70,3 +70,20 @@ class AccountViewSet(viewsets.ViewSet):
             "success": True,
             "user": UserSerializer(user).data,
         })
+
+    @action(methods=['POST'], detail=False)
+    def signup(self, request):
+        serializer = SignupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                "success": False,
+                "message": "Please check input.",
+                "errors": serializer.errors,
+            }, status=400)
+
+        user = serializer.save()
+        django_login(request, user)
+        return Response({
+            "success": True,
+            "user": UserSerializer(user).data,
+        }, status=201)
