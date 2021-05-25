@@ -15,6 +15,7 @@ class NewsFeedService(object):
         #     )
 
         # 正确的方法：使用 bulk_create，会把 insert 语句合成一条
+        print(FriendshipService.get_followers(tweet.user))
         newsfeeds = [
             NewsFeed(user=follower, tweet=tweet)
             for follower in FriendshipService.get_followers(tweet.user)
