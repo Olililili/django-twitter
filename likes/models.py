@@ -24,7 +24,10 @@ class Like(models.Model):
         # 就没有这样的效果了
         unique_together = (('user', 'content_type', 'object_id'),)
         # 这个 index 的作用是可以按时间排序某个被 like 的 content_object 的所有 likes
-        index_together = (('content_type', 'object_id', 'created_at'),)
+        index_together = (
+            ('content_type', 'object_id', 'created_at'),
+            ('user', 'content_type', 'created_at'),
+        )
 
     def __str__(self):
         return '{} - {} liked {} {}'.format(
@@ -33,7 +36,3 @@ class Like(models.Model):
             self.content_type,
             self.object_id,
         )
-
-    @property
-    def cached_user(self):
-        return UserService.get_user_through_cache(self.user_id)
