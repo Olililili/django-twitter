@@ -1,4 +1,4 @@
-from accounts.api.serializers import UserSerializerForLike, UserSerializer
+from accounts.api.serializers import UserSerializerForLike
 from comments.models import Comment
 from django.contrib.contenttypes.models import ContentType
 from likes.models import Like
@@ -8,14 +8,14 @@ from tweets.models import Tweet
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UserSerializerForLike()
 
     class Meta:
         model = Like
         fields = ('user', 'created_at')
 
 
-class LikeSerializerForCreate(serializers.ModelSerializer):
+class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):
     content_type = serializers.ChoiceField(choices=['comment', 'tweet'])
     object_id = serializers.IntegerField()
 
@@ -39,6 +39,9 @@ class LikeSerializerForCreate(serializers.ModelSerializer):
             raise ValidationError({'object_id': 'Object does not exist'})
         return data
 
+
+# class LikeSerializerForCreate(BaseLikeSerializerForCreateAndCancel):
+
     def create(self, validated_data):
         model_class = self._get_model_class(self.validated_data)
         instance, _ = Like.objects.get_or_create(
@@ -48,3 +51,17 @@ class LikeSerializerForCreate(serializers.ModelSerializer):
         )
         return instance
 
+class LikeSerializerForCancel(BaseLikeSerializerForCreateAndCancel):
+
+    def cancel(self):
+        """
+        cancel 方法是一个自定义的方法，cancel 不会被 serializer.save 调用
+        所以需要直接调用 serializer.cancel()
+        """
+        model_class = self._get_model_class(self.validated_data)
+        deleted, _ = Like.objects.filter(
+            content_type=ContentType.objects.get_for_model(model_class),
+            object_id=self.validated_data['object_id'],
+            user=self.context['request'].user,
+        ).delete()
+        return deleted
