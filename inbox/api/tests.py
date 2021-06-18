@@ -9,7 +9,6 @@ NOTIFICATION_URL = '/api/notifications/'
 class NotificationTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
         self.linghu, self.linghu_client = self.create_user_and_client('linghu')
         self.dongxie, self.dongxie_client = self.create_user_and_client('dong')
         self.dongxie_tweet = self.create_tweet(self.dongxie)
@@ -56,6 +55,8 @@ class NotificationApiTests(TestCase):
         })
         response = self.linghu_client.get(url)
         self.assertEqual(response.data['unread_count'], 2)
+        response = self.dongxie_client.get(url)
+        self.assertEqual(response.data['unread_count'], 0)
 
     def test_mark_all_as_read(self):
         self.dongxie_client.post(LIKE_URL, {
@@ -75,6 +76,15 @@ class NotificationApiTests(TestCase):
         mark_url = '/api/notifications/mark-all-as-read/'
         response = self.linghu_client.get(mark_url)
         self.assertEqual(response.status_code, 405)
+
+        # dongxie can not mark linghu's notifications as read
+        response = self.dongxie_client.post(mark_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['marked_count'], 0)
+        response = self.linghu_client.get(unread_url)
+        self.assertEqual(response.data['unread_count'], 2)
+
+        # linghu can mark his notifications as read
         response = self.linghu_client.post(mark_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['marked_count'], 2)
