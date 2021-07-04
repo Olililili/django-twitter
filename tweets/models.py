@@ -5,6 +5,9 @@ from utils.time_helpers import utc_now
 from likes.models import Like
 from django.contrib.contenttypes.models import ContentType
 from tweets.constants import TweetPhotoStatus, TWEET_PHOTO_STATUS_CHOICES
+from utils.memcached_helper import MemcachedHelper
+from django.db.models.signals import post_save, pre_delete
+from utils.listeners import invalidate_object_cache
 
 
 class Tweet(models.Model):
@@ -20,6 +23,9 @@ class Tweet(models.Model):
     class Meta:
         index_together = (('user', 'created_at'),)
         ordering = ('user', '-created_at')
+
+    def __str__(self):
+        return f'{self.created_at} {self.user}: {self.content}'
 
     @property
     def hours_to_now(self):
@@ -38,8 +44,9 @@ class Tweet(models.Model):
             object_id=self.id,
         ).order_by('-created_at')
 
-    def __str__(self):
-        return f'{self.created_at} {self.user}: {self.content}'
+    @property
+    def cached_user(self):
+        return MemcachedHelper.get_object_through_cache(User, self.user_id)
 
 
 class TweetPhoto(models.Model):
@@ -79,3 +86,6 @@ class TweetPhoto(models.Model):
 
     def __str__(self):
         return f'{self.tweet_id}: {self.file}'
+
+post_save.connect(invalidate_object_cache, sender=Tweet)
+pre_delete.connect(invalidate_object_cache, sender=Tweet)
